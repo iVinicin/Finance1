@@ -20,7 +20,7 @@ export const useTransactions = () => {
             color
           )
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', user.id.toString())
         .order('date', { ascending: false });
       
       if (error) throw error;
@@ -40,7 +40,7 @@ export const useCategories = () => {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id.toString())
         .order('name');
       
       if (error) throw error;
@@ -60,7 +60,7 @@ export const useMonthlyBalances = () => {
       const { data, error } = await supabase
         .from('monthly_balances')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', user.id.toString())
         .order('year', { ascending: false })
         .order('month', { ascending: false });
       
@@ -88,7 +88,7 @@ export const useCreateTransaction = () => {
       
       const { data, error } = await supabase
         .from('transactions')
-        .insert({ ...transaction, user_id: user.id })
+        .insert({ ...transaction, user_id: user.id.toString() })
         .select()
         .single();
         
@@ -116,7 +116,7 @@ export const useCreateMonthlyBalance = () => {
       
       const { data, error } = await supabase
         .from('monthly_balances')
-        .insert({ ...balance, user_id: user.id })
+        .insert({ ...balance, user_id: user.id.toString() })
         .select()
         .single();
         
