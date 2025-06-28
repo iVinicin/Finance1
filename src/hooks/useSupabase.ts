@@ -9,7 +9,12 @@ export const useTransactions = () => {
   return useQuery({
     queryKey: ['transactions', user?.id],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user?.id) {
+        console.log('No user ID available for transactions query');
+        return [];
+      }
+      
+      console.log('Fetching transactions for user:', user.id);
       const { data, error } = await supabase
         .from('transactions')
         .select(`
@@ -20,13 +25,17 @@ export const useTransactions = () => {
             color
           )
         `)
-        .eq('user_id', user.id.toString())
+        .eq('user_id', user.id)
         .order('date', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching transactions:', error);
+        throw error;
+      }
+      console.log('Transactions fetched:', data?.length || 0);
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 };
 
@@ -36,17 +45,26 @@ export const useCategories = () => {
   return useQuery({
     queryKey: ['categories', user?.id],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user?.id) {
+        console.log('No user ID available for categories query');
+        return [];
+      }
+      
+      console.log('Fetching categories for user:', user.id);
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .eq('user_id', user.id.toString())
+        .eq('user_id', user.id)
         .order('name');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching categories:', error);
+        throw error;
+      }
+      console.log('Categories fetched:', data?.length || 0);
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 };
 
@@ -56,18 +74,27 @@ export const useMonthlyBalances = () => {
   return useQuery({
     queryKey: ['monthly_balances', user?.id],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user?.id) {
+        console.log('No user ID available for monthly balances query');
+        return [];
+      }
+      
+      console.log('Fetching monthly balances for user:', user.id);
       const { data, error } = await supabase
         .from('monthly_balances')
         .select('*')
-        .eq('user_id', user.id.toString())
+        .eq('user_id', user.id)
         .order('year', { ascending: false })
         .order('month', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching monthly balances:', error);
+        throw error;
+      }
+      console.log('Monthly balances fetched:', data?.length || 0);
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 };
 
@@ -84,15 +111,23 @@ export const useCreateTransaction = () => {
       category_id?: string;
       date: string;
     }) => {
-      if (!user) throw new Error('User not authenticated');
+      if (!user?.id) {
+        console.error('No user available for transaction creation');
+        throw new Error('User not authenticated');
+      }
       
+      console.log('Creating transaction for user:', user.id, transaction);
       const { data, error } = await supabase
         .from('transactions')
-        .insert({ ...transaction, user_id: user.id.toString() })
+        .insert({ ...transaction, user_id: user.id })
         .select()
         .single();
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating transaction:', error);
+        throw error;
+      }
+      console.log('Transaction created:', data);
       return data;
     },
     onSuccess: () => {
@@ -112,15 +147,23 @@ export const useCreateMonthlyBalance = () => {
       year: number;
       initial_balance: number;
     }) => {
-      if (!user) throw new Error('User not authenticated');
+      if (!user?.id) {
+        console.error('No user available for monthly balance creation');
+        throw new Error('User not authenticated');
+      }
       
+      console.log('Creating monthly balance for user:', user.id, balance);
       const { data, error } = await supabase
         .from('monthly_balances')
-        .insert({ ...balance, user_id: user.id.toString() })
+        .insert({ ...balance, user_id: user.id })
         .select()
         .single();
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating monthly balance:', error);
+        throw error;
+      }
+      console.log('Monthly balance created:', data);
       return data;
     },
     onSuccess: () => {

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCategories, useCreateTransaction } from '@/hooks/useSupabase';
 import { useToast } from '@/hooks/use-toast';
+import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface TransactionFormProps {
   onClose?: () => void;
@@ -66,9 +67,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => {
 
       onClose?.();
     } catch (error) {
+      console.error('Error creating transaction:', error);
       toast({
         title: 'Erro',
-        description: 'Erro ao criar transação',
+        description: 'Erro ao criar transação. Tente novamente.',
         variant: 'destructive',
       });
     }
@@ -77,105 +79,126 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => {
   const filteredCategories = categories?.filter(cat => cat.type === formData.type) || [];
 
   return (
-    <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle>Nova Transação</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="title">Título *</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              placeholder="Ex: Supermercado"
-            />
-          </div>
+    <>
+      <DialogTitle>Nova Transação</DialogTitle>
+      <DialogDescription>
+        Adicione uma nova transação financeira ao seu controle.
+      </DialogDescription>
+      
+      <Card className="w-full border-0 shadow-none">
+        <CardContent className="p-0">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Título *</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Ex: Supermercado"
+                  className="w-full"
+                />
+              </div>
 
-          <div>
-            <Label htmlFor="amount">Valor *</Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              value={formData.amount}
-              onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-              placeholder="0.00"
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Valor *</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                  placeholder="0.00"
+                  className="w-full"
+                />
+              </div>
+            </div>
 
-          <div>
-            <Label>Tipo</Label>
-            <Select 
-              value={formData.type} 
-              onValueChange={(value: 'receita' | 'despesa') => 
-                setFormData(prev => ({ ...prev, type: value, category_id: '' }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="receita">Receita</SelectItem>
-                <SelectItem value="despesa">Despesa</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select 
+                  value={formData.type} 
+                  onValueChange={(value: 'receita' | 'despesa') => 
+                    setFormData(prev => ({ ...prev, type: value, category_id: '' }))
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="receita">Receita</SelectItem>
+                    <SelectItem value="despesa">Despesa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div>
-            <Label>Categoria</Label>
-            <Select 
-              value={formData.category_id} 
-              onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.icon} {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <Select 
+                  value={formData.category_id} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, category_id: value }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.icon} {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-          <div>
-            <Label htmlFor="date">Data</Label>
-            <Input
-              id="date"
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="date">Data</Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                className="w-full"
+              />
+            </div>
 
-          <div>
-            <Label htmlFor="description">Descrição</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Observações (opcional)"
-              rows={3}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Observações (opcional)"
+                rows={3}
+                className="w-full"
+              />
+            </div>
 
-          <div className="flex gap-2">
-            <Button type="submit" className="flex-1" disabled={createTransaction.isPending}>
-              {createTransaction.isPending ? 'Salvando...' : 'Salvar'}
-            </Button>
-            {onClose && (
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancelar
+            <div className="flex flex-col sm:flex-row gap-2 pt-4">
+              <Button 
+                type="submit" 
+                className="flex-1" 
+                disabled={createTransaction.isPending}
+              >
+                {createTransaction.isPending ? 'Salvando...' : 'Salvar'}
               </Button>
-            )}
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+              {onClose && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={onClose}
+                  className="flex-1 sm:flex-initial"
+                >
+                  Cancelar
+                </Button>
+              )}
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </>
   );
 };
 

@@ -1,14 +1,18 @@
 
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { 
+  Home, 
+  CreditCard, 
   BarChart3, 
-  DollarSign, 
+  MessageCircle, 
   Settings, 
-  Upload, 
   LogOut,
+  Sun,
+  Moon,
   Menu,
   X
 } from 'lucide-react';
@@ -19,186 +23,158 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-    { name: 'Transações', href: '/transactions', icon: DollarSign },
-    { name: 'Análise', href: '/analytics', icon: Upload },
-    { name: 'Configurações', href: '/settings', icon: Settings },
+  const menuItems = [
+    { path: '/dashboard', label: 'Dashboard', icon: Home },
+    { path: '/transactions', label: 'Transações', icon: CreditCard },
+    { path: '/analytics', label: 'Análises', icon: BarChart3 },
+    { path: '/chat', label: 'Chat IA', icon: MessageCircle },
+    { path: '/settings', label: 'Configurações', icon: Settings },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sidebar for desktop */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
-        <div className="flex-1 flex flex-col min-h-0 bg-white shadow-lg">
-          <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-            <div className="flex items-center flex-shrink-0 px-4 mb-8">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-white" />
-                </div>
-                <h1 className="text-xl font-bold text-gray-900">Finanlytics</h1>
-              </div>
-            </div>
-            <nav className="mt-5 flex-1 px-2 space-y-1">
-              {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                  >
-                    <item.icon
-                      className={`mr-3 flex-shrink-0 h-5 w-5 ${
-                        isActive ? 'text-primary-foreground' : 'text-gray-400 group-hover:text-gray-500'
-                      }`}
-                    />
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-          <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-            <div className="flex items-center w-full">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user?.name}
-                </p>
-                <p className="text-sm text-gray-500 truncate">
-                  {user?.email}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="ml-2 text-gray-400 hover:text-gray-600"
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-background">
+      {/* Mobile Header */}
+      <div className="lg:hidden flex items-center justify-between p-4 border-b">
+        <h1 className="text-xl font-bold">FinanceApp</h1>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleTheme}
+            className="p-2"
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2"
+          >
+            {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
 
-      {/* Mobile sidebar */}
+      {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50">
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setIsMobileMenuOpen(false)} />
-          <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
-            <div className="absolute top-0 right-0 -mr-12 pt-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="text-white hover:text-gray-300"
-              >
-                <X className="w-6 h-6" />
-              </Button>
-            </div>
-            <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
-              <div className="flex-shrink-0 flex items-center px-4 mb-8">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
-                    <BarChart3 className="w-5 h-5 text-white" />
-                  </div>
-                  <h1 className="text-xl font-bold text-gray-900">Finanlytics</h1>
-                </div>
+        <div className="lg:hidden bg-card border-b">
+          <div className="px-4 py-2 space-y-1">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+            <Button
+              variant="ghost"
+              onClick={handleSignOut}
+              className="w-full justify-start px-3 py-2 text-sm font-medium"
+            >
+              <LogOut className="h-4 w-4 mr-3" />
+              Sair
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex">
+        {/* Desktop Sidebar */}
+        <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0">
+          <div className="flex-1 flex flex-col min-h-0 bg-card border-r">
+            <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
+              <div className="flex items-center flex-shrink-0 px-4 mb-8">
+                <h1 className="text-xl font-bold">FinanceApp</h1>
               </div>
-              <nav className="mt-5 px-2 space-y-1">
-                {navigation.map((item) => {
-                  const isActive = location.pathname === item.href;
+              <nav className="mt-5 flex-1 px-2 space-y-1">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.path;
                   return (
                     <Link
-                      key={item.name}
-                      to={item.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={`group flex items-center px-3 py-2 text-base font-medium rounded-lg transition-colors ${
+                      key={item.path}
+                      to={item.path}
+                      className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors ${
                         isActive
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                       }`}
                     >
-                      <item.icon
-                        className={`mr-4 flex-shrink-0 h-6 w-6 ${
-                          isActive ? 'text-primary-foreground' : 'text-gray-400 group-hover:text-gray-500'
-                        }`}
-                      />
-                      {item.name}
+                      <Icon className="mr-3 h-5 w-5" />
+                      {item.label}
                     </Link>
                   );
                 })}
               </nav>
             </div>
-            <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-              <div className="flex items-center w-full">
-                <div className="flex-1 min-w-0">
-                  <p className="text-base font-medium text-gray-900 truncate">
-                    {user?.name}
-                  </p>
-                  <p className="text-sm text-gray-500 truncate">
-                    {user?.email}
-                  </p>
+            <div className="flex-shrink-0 flex border-t p-4">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center">
+                  <div className="ml-3">
+                    <p className="text-sm font-medium">{user?.email}</p>
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="ml-2 text-gray-400 hover:text-gray-600"
-                >
-                  <LogOut className="w-5 h-5" />
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleTheme}
+                    className="p-2"
+                  >
+                    {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSignOut}
+                    className="p-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Main content */}
-      <div className="lg:pl-64 flex flex-col flex-1">
-        {/* Mobile header */}
-        <div className="lg:hidden sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white shadow">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary lg:hidden"
-          >
-            <Menu className="w-6 h-6" />
-          </Button>
-          <div className="flex-1 px-4 flex justify-between items-center">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-white" />
+        {/* Main content */}
+        <div className="lg:pl-64 flex flex-col flex-1">
+          <main className="flex-1">
+            <div className="py-6">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                {children}
               </div>
-              <h1 className="text-xl font-bold text-gray-900">Finanlytics</h1>
             </div>
-          </div>
+          </main>
         </div>
-
-        <main className="flex-1">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {children}
-            </div>
-          </div>
-        </main>
       </div>
     </div>
   );
