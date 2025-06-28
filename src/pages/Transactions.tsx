@@ -7,67 +7,27 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Upload, Filter } from 'lucide-react';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Plus, Search, Upload, Filter, MessageCircle, PiggyBank } from 'lucide-react';
 import { useState } from 'react';
+import { useTransactions, useCategories } from '@/hooks/useSupabase';
+import TransactionForm from '@/components/TransactionForm';
+import MonthlyBalanceForm from '@/components/MonthlyBalanceForm';
 
 const Transactions = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const [showBalanceForm, setShowBalanceForm] = useState(false);
 
-  // Mock data - in real app, this would come from API
-  const transactions = [
-    {
-      id: 1,
-      date: '2024-06-28',
-      description: 'Supermercado ABC',
-      category: 'Alimentação',
-      amount: -150.50,
-      type: 'Despesa'
-    },
-    {
-      id: 2,
-      date: '2024-06-27',
-      description: 'Salário - Empresa XYZ',
-      category: 'Salário',
-      amount: 5000.00,
-      type: 'Receita'
-    },
-    {
-      id: 3,
-      date: '2024-06-26',
-      description: 'Uber - Centro',
-      category: 'Transporte',
-      amount: -25.30,
-      type: 'Despesa'
-    },
-    {
-      id: 4,
-      date: '2024-06-25',
-      description: 'Netflix',
-      category: 'Assinaturas',
-      amount: -39.90,
-      type: 'Despesa'
-    },
-    {
-      id: 5,
-      date: '2024-06-24',
-      description: 'Freelance - Cliente A',
-      category: 'Freelance',
-      amount: 800.00,
-      type: 'Receita'
-    },
-  ];
-
-  const categories = [
-    'Alimentação', 'Transporte', 'Moradia', 'Saúde', 'Lazer', 
-    'Educação', 'Assinaturas', 'Salário', 'Freelance', 'Outros'
-  ];
+  const { data: transactions = [] } = useTransactions();
+  const { data: categories = [] } = useCategories();
 
   const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === 'all' || transaction.category === filterCategory;
+    const matchesSearch = transaction.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         transaction.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = filterCategory === 'all' || transaction.category_id === filterCategory;
     const matchesType = filterType === 'all' || transaction.type === filterType;
     
     return matchesSearch && matchesCategory && matchesType;
@@ -90,23 +50,41 @@ const Transactions = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Transações</h1>
-            <p className="text-gray-600 mt-1">Gerencie todas as suas transações financeiras</p>
+            <h1 className="text-3xl font-bold">Transações</h1>
+            <p className="text-muted-foreground mt-1">Gerencie todas as suas transações financeiras</p>
           </div>
           <div className="flex space-x-3 mt-4 sm:mt-0">
+            <Dialog open={showBalanceForm} onOpenChange={setShowBalanceForm}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <PiggyBank className="w-4 h-4 mr-2" />
+                  Saldo Mensal
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <MonthlyBalanceForm onClose={() => setShowBalanceForm(false)} />
+              </DialogContent>
+            </Dialog>
             <Button variant="outline">
               <Upload className="w-4 h-4 mr-2" />
               Importar CSV
             </Button>
-            <Button className="gradient-primary text-white border-0 hover:opacity-90">
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Transação
-            </Button>
+            <Dialog open={showTransactionForm} onOpenChange={setShowTransactionForm}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nova Transação
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <TransactionForm onClose={() => setShowTransactionForm(false)} />
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
         {/* Filters */}
-        <Card className="shadow-financial border-0">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
               <Filter className="w-5 h-5 mr-2" />
@@ -118,7 +96,7 @@ const Transactions = () => {
               <div className="space-y-2">
                 <Label htmlFor="search">Buscar</Label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="search"
                     placeholder="Descrição ou categoria..."
@@ -135,11 +113,11 @@ const Transactions = () => {
                   <SelectTrigger>
                     <SelectValue placeholder="Todas as categorias" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border shadow-lg">
+                  <SelectContent>
                     <SelectItem value="all">Todas as categorias</SelectItem>
                     {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.icon} {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -152,10 +130,10 @@ const Transactions = () => {
                   <SelectTrigger>
                     <SelectValue placeholder="Todos os tipos" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border shadow-lg">
+                  <SelectContent>
                     <SelectItem value="all">Todos os tipos</SelectItem>
-                    <SelectItem value="Receita">Receita</SelectItem>
-                    <SelectItem value="Despesa">Despesa</SelectItem>
+                    <SelectItem value="receita">Receita</SelectItem>
+                    <SelectItem value="despesa">Despesa</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -178,7 +156,7 @@ const Transactions = () => {
         </Card>
 
         {/* Transactions Table */}
-        <Card className="shadow-financial border-0">
+        <Card>
           <CardHeader>
             <CardTitle>
               Todas as Transações ({filteredTransactions.length})
@@ -199,28 +177,37 @@ const Transactions = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredTransactions.map((transaction) => (
-                    <TableRow key={transaction.id} className="hover:bg-gray-50">
+                    <TableRow key={transaction.id}>
                       <TableCell className="font-medium">
                         {formatDate(transaction.date)}
                       </TableCell>
-                      <TableCell>{transaction.description}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">
-                          {transaction.category}
-                        </Badge>
+                        <div>
+                          <div className="font-medium">{transaction.title}</div>
+                          {transaction.description && (
+                            <div className="text-sm text-muted-foreground">{transaction.description}</div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {transaction.categories && (
+                          <Badge variant="secondary">
+                            {transaction.categories.icon} {transaction.categories.name}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge 
-                          variant={transaction.type === 'Receita' ? 'default' : 'destructive'}
-                          className={transaction.type === 'Receita' ? 'bg-success text-success-foreground' : ''}
+                          variant={transaction.type === 'receita' ? 'default' : 'destructive'}
+                          className={transaction.type === 'receita' ? 'bg-green-500 hover:bg-green-600' : ''}
                         >
-                          {transaction.type}
+                          {transaction.type === 'receita' ? 'Receita' : 'Despesa'}
                         </Badge>
                       </TableCell>
                       <TableCell className={`text-right font-semibold ${
-                        transaction.amount > 0 ? 'text-success' : 'text-destructive'
+                        transaction.type === 'receita' ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {formatCurrency(transaction.amount)}
+                        {transaction.type === 'receita' ? '+' : '-'}{formatCurrency(Math.abs(transaction.amount))}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex space-x-2 justify-end">
@@ -240,7 +227,7 @@ const Transactions = () => {
 
             {filteredTransactions.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-gray-500">Nenhuma transação encontrada com os filtros aplicados.</p>
+                <p className="text-muted-foreground">Nenhuma transação encontrada com os filtros aplicados.</p>
               </div>
             )}
           </CardContent>
