@@ -1,0 +1,244 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: finance-analytics-config
+  namespace: finance-analytics
+data:
+  # Application Configuration
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  PORT: "3000"
+  API_PORT: "8080"
+  
+  # Database Configuration
+  DB_HOST: "finance-analytics-prod-db.cluster-xyz.us-east-1.rds.amazonaws.com"
+  DB_PORT: "5432"
+  DB_NAME: "finance_analytics"
+  DB_SSL: "true"
+  DB_POOL_MIN: "2"
+  DB_POOL_MAX: "10"
+  
+  # Redis Configuration
+  REDIS_HOST: "finance-analytics-prod-cache.xyz.cache.amazonaws.com"
+  REDIS_PORT: "6379"
+  REDIS_SSL: "true"
+  
+  # Elasticsearch Configuration
+  ELASTICSEARCH_HOST: "https://search-finance-analytics-prod-xyz.us-east-1.es.amazonaws.com"
+  ELASTICSEARCH_PORT: "443"
+  
+  # S3 Configuration
+  S3_BUCKET: "finance-analytics-data-lake-prod"
+  S3_REGION: "us-east-1"
+  
+  # External APIs
+  PLAID_ENV: "production"
+  STRIPE_API_VERSION: "2023-10-16"
+  
+  # Feature Flags
+  ENABLE_ML_FEATURES: "true"
+  ENABLE_REAL_TIME_ANALYTICS: "true"
+  ENABLE_GAMIFICATION: "true"
+  ENABLE_CHAT_AI: "true"
+  
+  # Monitoring
+  METRICS_ENABLED: "true"
+  TRACING_ENABLED: "true"
+  HEALTH_CHECK_INTERVAL: "30"
+  
+  # Security
+  CORS_ORIGINS: "https://app.finance-analytics.com,https://finance-analytics.com"
+  RATE_LIMIT_WINDOW: "900000"
+  RATE_LIMIT_MAX: "100"
+  
+  # Cache TTL (in seconds)
+  CACHE_TTL_SHORT: "300"
+  CACHE_TTL_MEDIUM: "1800"
+  CACHE_TTL_LONG: "3600"
+  
+  # ML Model Configuration
+  ML_MODEL_VERSION: "v1.2.0"
+  ML_PREDICTION_BATCH_SIZE: "100"
+  ML_FEATURE_STORE_TTL: "86400"
+  
+  # Notification Settings
+  EMAIL_PROVIDER: "sendgrid"
+  SMS_PROVIDER: "twilio"
+  PUSH_NOTIFICATION_ENABLED: "true"
+  
+  # Analytics
+  ANALYTICS_BATCH_SIZE: "1000"
+  ANALYTICS_FLUSH_INTERVAL: "60"
+  
+  # File Upload
+  MAX_FILE_SIZE: "10485760"
+  ALLOWED_FILE_TYPES: "csv,xlsx,pdf"
+  
+  # Session Configuration
+  SESSION_TIMEOUT: "3600"
+  REFRESH_TOKEN_TTL: "604800"
+  
+  # Backup Configuration
+  BACKUP_RETENTION_DAYS: "30"
+  BACKUP_SCHEDULE: "0 2 * * *"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: finance-analytics-config
+  namespace: finance-analytics-staging
+data:
+  # Application Configuration
+  NODE_ENV: "staging"
+  LOG_LEVEL: "debug"
+  PORT: "3000"
+  API_PORT: "8080"
+  
+  # Database Configuration
+  DB_HOST: "finance-analytics-staging-db.cluster-xyz.us-east-1.rds.amazonaws.com"
+  DB_PORT: "5432"
+  DB_NAME: "finance_analytics_staging"
+  DB_SSL: "true"
+  DB_POOL_MIN: "1"
+  DB_POOL_MAX: "5"
+  
+  # Redis Configuration
+  REDIS_HOST: "finance-analytics-staging-cache.xyz.cache.amazonaws.com"
+  REDIS_PORT: "6379"
+  REDIS_SSL: "true"
+  
+  # Elasticsearch Configuration
+  ELASTICSEARCH_HOST: "https://search-finance-analytics-staging-xyz.us-east-1.es.amazonaws.com"
+  ELASTICSEARCH_PORT: "443"
+  
+  # S3 Configuration
+  S3_BUCKET: "finance-analytics-data-lake-staging"
+  S3_REGION: "us-east-1"
+  
+  # External APIs
+  PLAID_ENV: "sandbox"
+  STRIPE_API_VERSION: "2023-10-16"
+  
+  # Feature Flags
+  ENABLE_ML_FEATURES: "true"
+  ENABLE_REAL_TIME_ANALYTICS: "false"
+  ENABLE_GAMIFICATION: "true"
+  ENABLE_CHAT_AI: "true"
+  
+  # Monitoring
+  METRICS_ENABLED: "true"
+  TRACING_ENABLED: "true"
+  HEALTH_CHECK_INTERVAL: "30"
+  
+  # Security
+  CORS_ORIGINS: "https://staging.finance-analytics.com"
+  RATE_LIMIT_WINDOW: "900000"
+  RATE_LIMIT_MAX: "200"
+  
+  # Cache TTL (in seconds)
+  CACHE_TTL_SHORT: "60"
+  CACHE_TTL_MEDIUM: "300"
+  CACHE_TTL_LONG: "600"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: finance-analytics
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+        
+        # Logging
+        log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                       '$status $body_bytes_sent "$http_referer" '
+                       '"$http_user_agent" "$http_x_forwarded_for"';
+        
+        access_log /var/log/nginx/access.log main;
+        error_log /var/log/nginx/error.log warn;
+        
+        # Gzip compression
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+        
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none';" always;
+        
+        # Rate limiting
+        limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+        limit_req_zone $binary_remote_addr zone=login:10m rate=1r/s;
+        
+        upstream api_backend {
+            server api-service:8080;
+            keepalive 32;
+        }
+        
+        server {
+            listen 80;
+            server_name _;
+            
+            # Health check endpoint
+            location /health {
+                access_log off;
+                return 200 "healthy\n";
+                add_header Content-Type text/plain;
+            }
+            
+            # Static files
+            location / {
+                root /usr/share/nginx/html;
+                index index.html;
+                try_files $uri $uri/ /index.html;
+                
+                # Cache static assets
+                location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+                    expires 1y;
+                    add_header Cache-Control "public, immutable";
+                }
+            }
+            
+            # API proxy
+            location /api/ {
+                limit_req zone=api burst=20 nodelay;
+                
+                proxy_pass http://api_backend;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection 'upgrade';
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_cache_bypass $http_upgrade;
+                
+                # Timeouts
+                proxy_connect_timeout 5s;
+                proxy_send_timeout 60s;
+                proxy_read_timeout 60s;
+            }
+            
+            # Auth endpoints with stricter rate limiting
+            location /api/auth/ {
+                limit_req zone=login burst=5 nodelay;
+                
+                proxy_pass http://api_backend;
+                proxy_http_version 1.1;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+        }
+    }

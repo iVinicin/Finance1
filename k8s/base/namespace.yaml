@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: finance-analytics
+  labels:
+    name: finance-analytics
+    environment: production
+    project: finance-analytics
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: finance-analytics-staging
+  labels:
+    name: finance-analytics-staging
+    environment: staging
+    project: finance-analytics
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: finance-analytics-dev
+  labels:
+    name: finance-analytics-dev
+    environment: development
+    project: finance-analytics
+---
+# Service Account for Finance Analytics
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: finance-analytics-sa
+  namespace: finance-analytics
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/finance-analytics-service-role
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: finance-analytics-sa
+  namespace: finance-analytics-staging
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/finance-analytics-staging-service-role
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: finance-analytics-sa
+  namespace: finance-analytics-dev
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/finance-analytics-dev-service-role

@@ -1,0 +1,290 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: finance-analytics
+  labels:
+    app: api
+    version: v1
+    component: backend
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+        version: v1
+        component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: finance-analytics-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      initContainers:
+      - name: migration
+        image: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/finance-analytics-api:latest
+        command: ['npm', 'run', 'migrate']
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: database-url
+        - name: NODE_ENV
+          value: "production"
+      containers:
+      - name: api
+        image: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/finance-analytics-api:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        - containerPort: 9090
+          name: metrics
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: finance-analytics-config
+              key: NODE_ENV
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: finance-analytics-config
+              key: API_PORT
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: finance-analytics-config
+              key: LOG_LEVEL
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: database-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: redis-url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: jwt-secret
+        - name: ENCRYPTION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: encryption-key
+        - name: PLAID_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: plaid-client-id
+        - name: PLAID_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: plaid-secret
+        - name: STRIPE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: stripe-secret-key
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: openai-api-key
+        - name: SENDGRID_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: sendgrid-api-key
+        - name: TWILIO_ACCOUNT_SID
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: twilio-account-sid
+        - name: TWILIO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: finance-analytics-secrets
+              key: twilio-auth-token
+        - name: S3_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: finance-analytics-config
+              key: S3_BUCKET
+        - name: AWS_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: finance-analytics-config
+              key: S3_REGION
+        - name: ELASTICSEARCH_URL
+          valueFrom:
+            configMapKeyRef:
+              name: finance-analytics-config
+              key: ELASTICSEARCH_HOST
+        - name: CORS_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: finance-analytics-config
+              key: CORS_ORIGINS
+        - name: RATE_LIMIT_WINDOW
+          valueFrom:
+            configMapKeyRef:
+              name: finance-analytics-config
+              key: RATE_LIMIT_WINDOW
+        - name: RATE_LIMIT_MAX
+          valueFrom:
+            configMapKeyRef:
+              name: finance-analytics-config
+              key: RATE_LIMIT_MAX
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: app-logs
+          mountPath: /app/logs
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: app-logs
+        emptyDir: {}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - api
+              topologyKey: kubernetes.io/hostname
+      tolerations:
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 300
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+  namespace: finance-analytics
+  labels:
+    app: api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  - port: 9090
+    targetPort: 9090
+    protocol: TCP
+    name: metrics
+  selector:
+    app: api
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+  namespace: finance-analytics
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  minReplicas: 3
+  maxReplicas: 15
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-pdb
+  namespace: finance-analytics
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: api

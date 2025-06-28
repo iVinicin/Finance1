@@ -1,0 +1,319 @@
+version: '3.8'
+
+services:
+  # ============ FRONTEND ============
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:8080
+      - REACT_APP_ENVIRONMENT=development
+      - REACT_APP_VERSION=dev
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - api
+      - postgres
+      - redis
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ API ============
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+      - "9229:9229" # Node.js debugger
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - LOG_LEVEL=debug
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/finance_analytics_dev
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=dev-jwt-secret-key-change-in-production
+      - ENCRYPTION_KEY=dev-encryption-key-change-in-production
+      - CORS_ORIGINS=http://localhost:3000
+      - RATE_LIMIT_WINDOW=900000
+      - RATE_LIMIT_MAX=1000
+      - S3_BUCKET=finance-analytics-dev-bucket
+      - AWS_REGION=us-east-1
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ENABLE_DEBUG_MODE=true
+      - ENABLE_HOT_RELOAD=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+    command: npm run dev
+
+  # ============ DATABASE ============
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: finance_analytics_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ REDIS ============
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ ELASTICSEARCH ============
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    volumes:
+      - elasticsearch_dev_data:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ KIBANA ============
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.8.0
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - xpack.security.enabled=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ MINIO (S3 Compatible) ============
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_dev_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ MAILHOG (Email Testing) ============
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ PROMETHEUS ============
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
+      - prometheus_dev_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ GRAFANA ============
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_dev_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ JAEGER (Distributed Tracing) ============
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686" # Web UI
+      - "14268:14268" # HTTP collector
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ KAFKA ============
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_dev_data:/var/lib/zookeeper/data
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+    volumes:
+      - kafka_dev_data:/var/lib/kafka/data
+    depends_on:
+      - zookeeper
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ KAFKA UI ============
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8081:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      - kafka
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+  # ============ NGINX (Reverse Proxy) ============
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./config/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - api
+    networks:
+      - finance-analytics-dev
+    restart: unless-stopped
+
+# ============ VOLUMES ============
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  elasticsearch_dev_data:
+    driver: local
+  minio_dev_data:
+    driver: local
+  prometheus_dev_data:
+    driver: local
+  grafana_dev_data:
+    driver: local
+  zookeeper_dev_data:
+    driver: local
+  kafka_dev_data:
+    driver: local
+
+# ============ NETWORKS ============
+networks:
+  finance-analytics-dev:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

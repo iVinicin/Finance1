@@ -1,14 +1,59 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "finance-analytics-dashboard",
+  "version": "1.0.0",
+  "description": "SaaS platform for financial analytics with AI and gamification",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "build:staging": "vite build --mode staging",
+    "build:production": "vite build --mode production",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "type-check": "tsc --noEmit",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:unit": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "cypress run",
+    "test:e2e:open": "cypress open",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js",
+    "db:reset": "node scripts/reset-db.js",
+    "es:setup": "node scripts/setup-elasticsearch.js",
+    "docker:dev": "docker-compose -f docker-compose.dev.yml up -d",
+    "docker:dev:down": "docker-compose -f docker-compose.dev.yml down",
+    "docker:dev:logs": "docker-compose -f docker-compose.dev.yml logs -f",
+    "docker:build": "docker build -t finance-analytics:latest .",
+    "docker:build:api": "docker build -t finance-analytics-api:latest ./api",
+    "k8s:apply": "kubectl apply -f k8s/",
+    "k8s:delete": "kubectl delete -f k8s/",
+    "terraform:init": "cd terraform && terraform init",
+    "terraform:plan": "cd terraform && terraform plan",
+    "terraform:apply": "cd terraform && terraform apply",
+    "terraform:destroy": "cd terraform && terraform destroy",
+    "setup:dev": "./scripts/setup-dev.sh",
+    "setup:prod": "./scripts/setup-prod.sh",
+    "deploy:staging": "./scripts/deploy-staging.sh",
+    "deploy:production": "./scripts/deploy-production.sh",
+    "monitoring:start": "docker-compose -f docker-compose.monitoring.yml up -d",
+    "monitoring:stop": "docker-compose -f docker-compose.monitoring.yml down",
+    "backup:db": "node scripts/backup-database.js",
+    "restore:db": "node scripts/restore-database.js",
+    "security:audit": "npm audit && docker run --rm -v $(pwd):/app securecodewarrior/docker-security-scanner",
+    "performance:test": "k6 run tests/performance/load-test.js",
+    "docs:generate": "typedoc --out docs src",
+    "docs:serve": "serve docs",
+    "clean": "rm -rf dist node_modules/.cache .next",
+    "clean:all": "npm run clean && rm -rf node_modules",
+    "postinstall": "husky install",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -41,11 +86,15 @@
     "@radix-ui/react-tooltip": "^1.1.4",
     "@supabase/supabase-js": "^2.50.2",
     "@tanstack/react-query": "^5.56.2",
+    "@google/generative-ai": "^0.2.1",
+    "@tensorflow/tfjs": "^4.15.0",
+    "@tensorflow/tfjs-react-native": "^0.8.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.3.0",
+    "framer-motion": "^10.16.16",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
@@ -61,7 +110,10 @@
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.3",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zustand": "^4.4.7",
+    "workbox-window": "^7.0.0",
+    "idb": "^7.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
@@ -70,16 +122,71 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react-swc": "^3.5.0",
+    "@vitest/coverage-v8": "^1.0.4",
     "autoprefixer": "^10.4.20",
+    "cypress": "^13.6.2",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
+    "husky": "^8.0.3",
+    "jsdom": "^23.0.1",
+    "lint-staged": "^15.2.0",
     "lovable-tagger": "^1.1.7",
     "postcss": "^8.4.47",
+    "prettier": "^3.1.1",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "vite": "^5.4.1"
-  }
+    "vite": "^5.4.1",
+    "vite-plugin-pwa": "^0.17.4",
+    "vitest": "^1.0.4",
+    "workbox-build": "^7.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md}": [
+      "prettier --write"
+    ]
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "keywords": [
+    "finance",
+    "analytics",
+    "dashboard",
+    "saas",
+    "ai",
+    "machine-learning",
+    "react",
+    "typescript",
+    "tailwindcss"
+  ],
+  "author": "Finance Analytics Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/finance-analytics/dashboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/finance-analytics/dashboard/issues"
+  },
+  "homepage": "https://finance-analytics.com"
 }
