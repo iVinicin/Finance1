@@ -227,7 +227,7 @@ const Dashboard = () => {
                 <Tooltip formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR')}`} />
                 <Bar 
                   dataKey="balance" 
-                  fill={(entry) => entry >= 0 ? 'hsl(var(--success))' : 'hsl(var(--destructive))'}
+                  fill="hsl(var(--primary))"
                   radius={4}
                 />
               </BarChart>
