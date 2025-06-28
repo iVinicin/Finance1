@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +13,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, isLoading } = useAuth();
+  const { signIn, isLoading } = useAuth(); // Alterado 'login' para 'signIn'
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -28,18 +27,20 @@ const Login = () => {
     }
 
     try {
-      const success = await login(email, password);
-      if (success) {
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Bem-vindo ao Finanlytics Dash.",
-        });
-        navigate('/dashboard');
-      } else {
-        setError('Email ou senha incorretos.');
-      }
-    } catch (error) {
-      setError('Erro ao fazer login. Tente novamente.');
+      await signIn(email, password); // Chamada da função signIn
+      toast({
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo ao Finanlytics Dash.",
+      });
+      navigate('/dashboard');
+    } catch (err) {
+      const errorMessage = (err as Error).message || 'Erro ao fazer login. Tente novamente.';
+      setError(errorMessage);
+      toast({
+        title: "Erro ao fazer login",
+        description: errorMessage,
+        variant: "destructive"
+      });
     }
   };
 
