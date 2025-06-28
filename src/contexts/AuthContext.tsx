@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -6,7 +5,7 @@ import { User } from '@supabase/supabase-js';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (name: string, email: string, password: string) => Promise<void>; // Adicionado 'name'
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -18,7 +17,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
@@ -27,14 +25,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     getSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Create default categories when user signs up or signs in
         if (session?.user && (event === 'SIGNED_UP' || event === 'SIGNED_IN')) {
           try {
             await supabase.rpc('create_default_categories', {
@@ -51,8 +47,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+  // Função signUp atualizada para incluir o nome nos metadados do usuário
+  const signUp = async (name: string, email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({ 
+      email, 
+      password, 
+      options: { 
+        data: {
+          full_name: name // Passa o nome como user_metadata
+        }
+      } 
+    });
     if (error) throw error;
   };
 
