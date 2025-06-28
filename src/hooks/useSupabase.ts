@@ -88,7 +88,7 @@ export const useCreateTransaction = () => {
       
       const { data, error } = await supabase
         .from('transactions')
-        .insert([{ ...transaction, user_id: user.id }])
+        .insert({ ...transaction, user_id: user.id })
         .select()
         .single();
         
@@ -116,7 +116,7 @@ export const useCreateMonthlyBalance = () => {
       
       const { data, error } = await supabase
         .from('monthly_balances')
-        .insert([{ ...balance, user_id: user.id }])
+        .insert({ ...balance, user_id: user.id })
         .select()
         .single();
         
