@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,7 +15,7 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const { register, isLoading } = useAuth();
+  const { signUp, isLoading } = useAuth(); // Alterado 'register' para 'signUp'
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -40,18 +39,20 @@ const Register = () => {
     }
 
     try {
-      const success = await register(name, email, password);
-      if (success) {
-        toast({
-          title: "Conta criada com sucesso!",
-          description: "Bem-vindo ao Finanlytics Dash.",
-        });
-        navigate('/dashboard');
-      } else {
-        setError('Erro ao criar conta. Tente novamente.');
-      }
-    } catch (error) {
-      setError('Erro ao criar conta. Tente novamente.');
+      await signUp(name, email, password); // Chamada da função signUp com o nome
+      toast({
+        title: "Conta criada com sucesso!",
+        description: "Bem-vindo ao Finanlytics Dash.",
+      });
+      navigate('/dashboard');
+    } catch (err) {
+      const errorMessage = (err as Error).message || 'Erro ao criar conta. Tente novamente.';
+      setError(errorMessage);
+      toast({
+        title: "Erro ao criar conta",
+        description: errorMessage,
+        variant: "destructive"
+      });
     }
   };
 
