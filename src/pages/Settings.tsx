@@ -1,4 +1,3 @@
-
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,18 +14,19 @@ const Settings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  // Profile form state
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
+  // Estado do formulário de perfil
+  // Corrigido: usar user?.user_metadata?.full_name para o nome
+  const [name, setName] = useState(user?.user_metadata?.full_name || ''); 
+  const [email, setEmail] = useState(user?.email || ''); 
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   
-  // Password form state
+  // Estado do formulário de senha
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   
-  // Delete account state
+  // Estado de exclusão da conta
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
@@ -34,7 +34,8 @@ const Settings = () => {
     e.preventDefault();
     setIsUpdatingProfile(true);
     
-    // Simulate API call
+    // Simular chamada da API. Em uma aplicação real, você atualizaria os metadados do usuário no Supabase aqui.
+    // Exemplo: await supabase.auth.updateUser({ data: { full_name: name } });
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     toast({
@@ -68,7 +69,8 @@ const Settings = () => {
     
     setIsUpdatingPassword(true);
     
-    // Simulate API call
+    // Simular chamada da API. Em uma aplicação real, você atualizaria a senha no Supabase aqui.
+    // Exemplo: await supabase.auth.updateUser({ password: newPassword });
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     toast({
@@ -94,7 +96,9 @@ const Settings = () => {
     
     setIsDeletingAccount(true);
     
-    // Simulate API call
+    // Simular chamada da API. Em uma aplicação real, você deletaria o usuário no Supabase aqui.
+    // O Supabase geralmente lida com a exclusão em cascata em perfis se o RLS permitir.
+    // await supabase.auth.admin.deleteUser(user.id);
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     toast({
@@ -102,7 +106,7 @@ const Settings = () => {
       description: "Sua conta foi deletada permanentemente.",
     });
     
-    // In real app, this would redirect to home and clear auth
+    // Em uma aplicação real, isso redirecionaria para a página inicial e limparia a autenticação
     setIsDeletingAccount(false);
   };
 
