@@ -13,7 +13,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { signIn, isLoading } = useAuth(); // Alterado 'login' para 'signIn'
+  const { signIn, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -27,7 +27,7 @@ const Login = () => {
     }
 
     try {
-      await signIn(email, password); // Chamada da função signIn
+      await signIn(email, password);
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo ao Finanlytics Dash.",

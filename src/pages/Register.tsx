@@ -15,7 +15,7 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const { signUp, isLoading } = useAuth(); // Alterado 'register' para 'signUp'
+  const { signUp, isLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -39,7 +39,7 @@ const Register = () => {
     }
 
     try {
-      await signUp(name, email, password); // Chamada da função signUp com o nome
+      await signUp(name, email, password);
       toast({
         title: "Conta criada com sucesso!",
         description: "Bem-vindo ao Finanlytics Dash.",
